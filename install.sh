@@ -159,6 +159,7 @@ if [ "$INSTALL_SAMBA" = "1" ]; then
    comment = Photo Frame Photos
    path = $PHOTOS_DIR
    browseable = yes
+   read only = no
    writable = yes
    create mask = 0644
    directory mask = 0755
