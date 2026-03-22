@@ -15,9 +15,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libwebp-dev \
     libtiff-dev \
     libx11-6 \
+    libheif-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir pygame==2.6.1 Pillow==10.4.0
+RUN pip install --no-cache-dir pygame==2.6.1 Pillow==10.4.0 pillow-heif
 
 WORKDIR /app
 

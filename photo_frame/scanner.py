@@ -15,11 +15,20 @@ from typing import Optional
 from PIL import Image
 from PIL.ExifTags import TAGS
 
+try:
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+    _HEIF_AVAILABLE = True
+except ImportError:
+    _HEIF_AVAILABLE = False
+
 import config
 
 log = logging.getLogger(__name__)
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp", ".tiff", ".tif"}
+if _HEIF_AVAILABLE:
+    SUPPORTED_EXTENSIONS |= {".heic", ".heif"}
 
 EXIF_TAG_MAP = {v: k for k, v in TAGS.items()}
 DATETIME_TAG = EXIF_TAG_MAP.get("DateTimeOriginal", 36867)

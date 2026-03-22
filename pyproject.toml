@@ -12,6 +12,7 @@ dependencies = [
     #   sudo apt install -y python3-pygame
     # On desktop/Docker it is installed from PyPI automatically.
     "Pillow>=10.0",
+    "pillow-heif>=0.16",
     "pygame>=2.6",
 ]
 

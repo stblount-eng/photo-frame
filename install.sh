@@ -39,6 +39,7 @@ sudo apt-get install -y --no-install-recommends \
     libsdl2-image-dev \
     libjpeg-dev \
     libpng-dev \
+    libheif-dev \
     git
 echo "   Done."
 echo ""
@@ -68,7 +69,7 @@ echo ""
 # ── 4. Install Python dependencies ───────────────────────────────────────────
 echo ">> Installing Python dependencies..."
 "$VENV_DIR/bin/pip" install --quiet --upgrade pip
-"$VENV_DIR/bin/pip" install --quiet Pillow
+"$VENV_DIR/bin/pip" install --quiet Pillow pillow-heif
 echo ""
 
 # ── 5. Install the package (editable) ────────────────────────────────────────
