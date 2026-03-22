@@ -218,37 +218,43 @@ For SPI LCDs you need a framebuffer driver so that pygame can write to it.
 
 ## Auto-start on boot (systemd)
 
-`install.sh` handles this by default (`INSTALL_SERVICE=1`). To set it up manually:
+`install.sh` handles this by default (`INSTALL_SERVICE=1`). The service runs as a **user service** so that it inherits the graphical session environment (Wayland or X11) automatically — no manual `SDL_VIDEODRIVER` configuration needed.
+
+To set it up manually:
+
+```bash
+mkdir -p ~/.config/systemd/user
+```
 
 ```ini
-# /etc/systemd/system/photo-frame.service
+# ~/.config/systemd/user/photo-frame.service
 [Unit]
 Description=Photo Frame
-After=multi-user.target
+After=default.target
 
 [Service]
-User=pi
+Type=simple
 WorkingDirectory=/home/pi/photo-frame/photo_frame
-Environment="SDL_VIDEODRIVER=fbcon"
-Environment="SDL_FBDEV=/dev/fb0"
 ExecStart=/home/pi/photo-frame/.venv/bin/python3 /home/pi/photo-frame/photo_frame/main.py
 Restart=on-failure
 RestartSec=5
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
 ```
 
 ```bash
-sudo systemctl enable photo-frame
-sudo systemctl start photo-frame
+loginctl enable-linger pi        # allow user services to run at boot
+systemctl --user daemon-reload
+systemctl --user enable photo-frame
+systemctl --user start photo-frame
 ```
 
 Useful commands:
 ```bash
-sudo systemctl status photo-frame    # check if running
-sudo systemctl restart photo-frame   # restart after config changes
-sudo journalctl -u photo-frame -f    # follow logs
+systemctl --user status photo-frame    # check if running
+systemctl --user restart photo-frame   # restart after config changes
+journalctl --user -u photo-frame -f    # follow logs
 ```
 
 ---

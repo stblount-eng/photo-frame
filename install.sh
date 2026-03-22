@@ -81,36 +81,48 @@ mkdir -p "$PHOTOS_DIR"
 echo ">> Photos directory: $PHOTOS_DIR"
 echo ""
 
-# ── 7. Systemd service ───────────────────────────────────────────────────────
+# ── 7. Systemd user service ──────────────────────────────────────────────────
 if [ "$INSTALL_SERVICE" = "1" ]; then
-    echo ">> Installing systemd service (photo-frame)..."
+    echo ">> Installing user systemd service (photo-frame)..."
 
-    # Ensure the user can access the framebuffer device
-    sudo usermod -a -G video "$USER"
+    # Remove legacy system service if present from a previous install
+    if systemctl is-active --quiet photo-frame 2>/dev/null; then
+        sudo systemctl stop photo-frame || true
+    fi
+    if [ -f /etc/systemd/system/photo-frame.service ]; then
+        sudo systemctl disable photo-frame 2>/dev/null || true
+        sudo rm /etc/systemd/system/photo-frame.service
+        sudo systemctl daemon-reload
+    fi
 
-    sudo tee /etc/systemd/system/photo-frame.service > /dev/null <<UNIT
+    mkdir -p "$HOME/.config/systemd/user"
+
+    # A user service inherits WAYLAND_DISPLAY / DISPLAY from the graphical
+    # session automatically, so SDL can connect without SDL_VIDEODRIVER being
+    # set manually.
+    tee "$HOME/.config/systemd/user/photo-frame.service" > /dev/null <<UNIT
 [Unit]
 Description=Photo Frame
-After=multi-user.target
+After=default.target
 
 [Service]
-User=$USER
-SupplementaryGroups=video
+Type=simple
 WorkingDirectory=$INSTALL_DIR/photo_frame
-Environment="SDL_VIDEODRIVER=fbcon"
-Environment="SDL_FBDEV=/dev/fb0"
 ExecStart=$VENV_DIR/bin/python3 $INSTALL_DIR/photo_frame/main.py
 Restart=on-failure
 RestartSec=5
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
 UNIT
 
-    sudo systemctl daemon-reload
-    sudo systemctl enable photo-frame
-    sudo systemctl start photo-frame
-    echo "   Enabled and started. Check: sudo systemctl status photo-frame"
+    # Allow user services to run at boot (without an interactive login session)
+    loginctl enable-linger "$USER"
+
+    systemctl --user daemon-reload
+    systemctl --user enable photo-frame
+    systemctl --user start photo-frame
+    echo "   Enabled and started. Check: systemctl --user status photo-frame"
     echo ""
 fi
 
