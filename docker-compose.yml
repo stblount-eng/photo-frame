@@ -1,0 +1,16 @@
+services:
+  photo-frame:
+    build: .
+    container_name: photo-frame
+    image: photo-frame-test
+    environment:
+      - DOCKER_TEST=1
+      # Remove the next line to run headless (no window).
+      # Requires VcXsrv running on your Windows host with "Disable access control" ticked.
+      - DISPLAY_HOST=host.docker.internal
+    volumes:
+      # Mount your local photos folder read-only.
+      # Change ./photos to any folder on your machine.
+      - ./photos:/app/photos:ro
+    stdin_open: true
+    tty: true
