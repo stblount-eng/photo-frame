@@ -8,6 +8,7 @@ import logging
 from typing import NamedTuple
 
 import pygame
+from PIL import Image, ImageOps
 
 from scanner import PhotoEntry
 from scheduler import _best_collage_grid
@@ -88,7 +89,10 @@ def render_slide(
 
     for placed in placements:
         try:
-            img = pygame.image.load(placed.photo.path).convert()
+            pil_img = Image.open(placed.photo.path)
+            pil_img = ImageOps.exif_transpose(pil_img)
+            pil_img = pil_img.convert("RGB")
+            img = pygame.image.fromstring(pil_img.tobytes(), pil_img.size, "RGB")
         except Exception as e:
             log.warning("Could not load image %s: %s", placed.photo.path, e)
             continue

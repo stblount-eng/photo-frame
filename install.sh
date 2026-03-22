@@ -150,6 +150,12 @@ if [ "$INSTALL_SAMBA" = "1" ]; then
         sudo sed -i '/^\[global\]/a\   min protocol = SMB2' /etc/samba/smb.conf
     fi
 
+    # Enable extended attributes for iOS 18 compatibility (prevents read-only on iPhone)
+    if ! grep -q "vfs objects" /etc/samba/smb.conf; then
+        echo ">> Enabling vfs streams_xattr for iOS 18 compatibility..."
+        sudo sed -i '/^\[global\]/a\   vfs objects = streams_xattr' /etc/samba/smb.conf
+    fi
+
     # Only append the share block if it isn't already in smb.conf
     if ! grep -q "^\[$SHARE_NAME\]" /etc/samba/smb.conf; then
         echo ">> Adding [$SHARE_NAME] share to /etc/samba/smb.conf..."
