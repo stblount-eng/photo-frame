@@ -29,13 +29,21 @@ def _pick_direction() -> Direction:
 class Renderer:
     def __init__(self):
         pygame.init()
-        pygame.display.set_caption("Photo Frame")
-        pygame.mouse.set_visible(False)
 
+        if not pygame.display.get_init():
+            raise RuntimeError(
+                "pygame could not initialise the display.\n"
+                "  • Docker/headless: make sure DISPLAY is set and Xvfb is running.\n"
+                "  • Windows windowed mode: start VcXsrv with 'Disable access control' ticked,\n"
+                "    then re-run with -e DISPLAY_HOST=host.docker.internal."
+            )
+
+        pygame.display.set_caption("Photo Frame")
         flags = pygame.FULLSCREEN | pygame.HWSURFACE | pygame.DOUBLEBUF if config.FULLSCREEN else 0
         self.screen = pygame.display.set_mode(
             (config.SCREEN_WIDTH, config.SCREEN_HEIGHT), flags
         )
+        pygame.mouse.set_visible(False)
         self.clock   = pygame.time.Clock()
         self.current: pygame.Surface | None = None
 

@@ -13,3 +13,5 @@ DISPLAY_SECS   = 5        # Faster cycling during testing
 TRANSITION_SECS = 0.4
 
 RELOAD_CHECK_SECS = 5     # Quicker reload checks
+
+PHOTOS_DIR = "/app/photos"  # Matches the Docker volume mount point

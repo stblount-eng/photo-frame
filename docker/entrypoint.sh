@@ -22,5 +22,8 @@ else
     done
 fi
 
+# Suppress ALSA errors — no sound card in container, audio not needed
+export SDL_AUDIODRIVER=dummy
+
 echo "▶  Launching photo frame..."
 exec python3 main.py "$@"
