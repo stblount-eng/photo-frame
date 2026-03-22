@@ -33,6 +33,9 @@ class Renderer:
         if not pygame.display.get_init():
             raise RuntimeError(
                 "pygame could not initialise the display.\n"
+                "  • Raspberry Pi (fbcon): make sure the service user is in the 'video' group:\n"
+                "      sudo usermod -a -G video $USER\n"
+                "    and that the service has SupplementaryGroups=video in its unit file.\n"
                 "  • Docker/headless: make sure DISPLAY is set and Xvfb is running.\n"
                 "  • Windows windowed mode: start VcXsrv with 'Disable access control' ticked,\n"
                 "    then re-run with -e DISPLAY_HOST=host.docker.internal."

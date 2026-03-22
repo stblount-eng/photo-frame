@@ -85,6 +85,9 @@ echo ""
 if [ "$INSTALL_SERVICE" = "1" ]; then
     echo ">> Installing systemd service (photo-frame)..."
 
+    # Ensure the user can access the framebuffer device
+    sudo usermod -a -G video "$USER"
+
     sudo tee /etc/systemd/system/photo-frame.service > /dev/null <<UNIT
 [Unit]
 Description=Photo Frame
@@ -92,6 +95,7 @@ After=multi-user.target
 
 [Service]
 User=$USER
+SupplementaryGroups=video
 WorkingDirectory=$INSTALL_DIR/photo_frame
 Environment="SDL_VIDEODRIVER=fbcon"
 Environment="SDL_FBDEV=/dev/fb0"
@@ -112,11 +116,26 @@ fi
 
 # ── 8. Samba network share ───────────────────────────────────────────────────
 if [ "$INSTALL_SAMBA" = "1" ]; then
-    echo ">> Installing Samba..."
-    sudo apt-get install -y --no-install-recommends samba
+    echo ">> Installing Samba (will retry up to 3 times on mirror failures)..."
+    for attempt in 1 2 3; do
+        sudo apt-get install -y --no-install-recommends samba && break
+        if [ "$attempt" -eq 3 ]; then
+            echo "ERROR: Samba installation failed after 3 attempts."
+            echo "  Try manually: sudo apt-get update && sudo apt-get install -y samba"
+            exit 1
+        fi
+        echo "   Attempt $attempt failed, retrying after apt-get update..."
+        sudo apt-get update -qq
+    done
     echo ""
 
     SHARE_NAME="photos"
+
+    # Disable SMB1 in the [global] section if not already set
+    if ! grep -q "min protocol" /etc/samba/smb.conf; then
+        echo ">> Disabling SMB1 (setting min protocol = SMB2)..."
+        sudo sed -i '/^\[global\]/a\   min protocol = SMB2' /etc/samba/smb.conf
+    fi
 
     # Only append the share block if it isn't already in smb.conf
     if ! grep -q "^\[$SHARE_NAME\]" /etc/samba/smb.conf; then
