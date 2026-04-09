@@ -12,6 +12,7 @@ from PIL import Image, ImageOps
 
 from scanner import PhotoEntry
 from scheduler import _best_collage_grid
+import cache
 import config
 
 log = logging.getLogger(__name__)
@@ -89,10 +90,14 @@ def render_slide(
 
     for placed in placements:
         try:
-            pil_img = Image.open(placed.photo.path)
-            pil_img = ImageOps.exif_transpose(pil_img)
-            pil_img = pil_img.convert("RGB")
-            img = pygame.image.fromstring(pil_img.tobytes(), pil_img.size, "RGB")
+            cached_path = cache.get_cached_path(placed.photo.path)
+            if cached_path:
+                img = pygame.image.load(cached_path).convert()
+            else:
+                pil_img = Image.open(placed.photo.path)
+                pil_img = ImageOps.exif_transpose(pil_img)
+                pil_img = pil_img.convert("RGB")
+                img = pygame.image.fromstring(pil_img.tobytes(), pil_img.size, "RGB")
         except Exception as e:
             log.warning("Could not load image %s: %s", placed.photo.path, e)
             continue
@@ -107,7 +112,7 @@ def render_slide(
         new_w   = int(img_w * scale)
         new_h   = int(img_h * scale)
 
-        scaled = pygame.transform.smoothscale(img, (new_w, new_h))
+        scaled = pygame.transform.scale(img, (new_w, new_h))
 
         # Crop to cell size from centre
         crop_x = (new_w - dest.width)  // 2

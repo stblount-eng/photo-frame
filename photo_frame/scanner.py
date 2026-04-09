@@ -65,27 +65,20 @@ class PhotoEntry:
         return min(screen_ar, photo_ar) / max(screen_ar, photo_ar)
 
 
-def _read_exif_datetime(path: str) -> Optional[datetime]:
-    """Return DateTimeOriginal from EXIF, or None."""
+def _read_metadata(path: str) -> tuple[Optional[datetime], int, int]:
+    """Read EXIF datetime and dimensions in a single file open."""
     try:
         with Image.open(path) as img:
+            w, h = img.size
+            taken_at = None
             exif_data = img._getexif()
             if exif_data:
                 raw = exif_data.get(DATETIME_TAG)
                 if raw:
-                    return datetime.strptime(raw, "%Y:%m:%d %H:%M:%S")
+                    taken_at = datetime.strptime(raw, "%Y:%m:%d %H:%M:%S")
+            return taken_at, w, h
     except Exception:
-        pass
-    return None
-
-
-def _read_dimensions(path: str) -> tuple[int, int]:
-    """Return (width, height) without fully decoding the image."""
-    try:
-        with Image.open(path) as img:
-            return img.size  # (width, height)
-    except Exception:
-        return (0, 0)
+        return None, 0, 0
 
 
 def scan(directory: str = config.PHOTOS_DIR) -> list[PhotoEntry]:
@@ -103,14 +96,12 @@ def scan(directory: str = config.PHOTOS_DIR) -> list[PhotoEntry]:
     for ext in SUPPORTED_EXTENSIONS:
         for file_path in base.rglob(f"*{ext}"):
             p = str(file_path)
-            taken_at = _read_exif_datetime(p)
-            w, h = _read_dimensions(p)
+            taken_at, w, h = _read_metadata(p)
             photos.append(PhotoEntry(path=p, taken_at=taken_at, width=w, height=h))
         # Also match uppercase extensions
         for file_path in base.rglob(f"*{ext.upper()}"):
             p = str(file_path)
-            taken_at = _read_exif_datetime(p)
-            w, h = _read_dimensions(p)
+            taken_at, w, h = _read_metadata(p)
             photos.append(PhotoEntry(path=p, taken_at=taken_at, width=w, height=h))
 
     # Deduplicate (rglob on case variants can double-count on case-sensitive fs)
@@ -128,4 +119,53 @@ def scan(directory: str = config.PHOTOS_DIR) -> list[PhotoEntry]:
     log.info("Scanned %d photos (%d dated, %d undated) from %s",
              len(unique), len(dated), len(undated), directory)
 
+    return dated + undated
+
+
+def _discover_files(directory: str = config.PHOTOS_DIR) -> set[str]:
+    """Return all supported image file paths in *directory*."""
+    base = Path(directory)
+    if not base.exists():
+        return set()
+    paths: set[str] = set()
+    for ext in SUPPORTED_EXTENSIONS:
+        for file_path in base.rglob(f"*{ext}"):
+            paths.add(str(file_path))
+        for file_path in base.rglob(f"*{ext.upper()}"):
+            paths.add(str(file_path))
+    return paths
+
+
+def incremental_scan(
+    existing: list[PhotoEntry],
+    directory: str = config.PHOTOS_DIR,
+) -> list[PhotoEntry]:
+    """
+    Compare *existing* photo list against files on disk.
+    Only reads metadata for new/changed files.  Removes deleted entries.
+    Returns a fresh sorted list.
+    """
+    disk_files = _discover_files(directory)
+
+    # Index existing entries by path for quick lookup
+    by_path: dict[str, PhotoEntry] = {p.path: p for p in existing}
+
+    # Keep existing entries whose files still exist, add new ones
+    result: list[PhotoEntry] = []
+    new_count = 0
+    for p in disk_files:
+        if p in by_path:
+            result.append(by_path[p])
+        else:
+            taken_at, w, h = _read_metadata(p)
+            result.append(PhotoEntry(path=p, taken_at=taken_at, width=w, height=h))
+            new_count += 1
+
+    removed = len(by_path) - (len(result) - new_count)
+    log.info("Incremental scan: %d new, %d removed, %d total",
+             new_count, removed, len(result))
+
+    # Sort same as full scan
+    dated   = sorted([p for p in result if p.taken_at], key=lambda p: p.sort_key)
+    undated = [p for p in result if not p.taken_at]
     return dated + undated

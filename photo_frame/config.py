@@ -12,6 +12,8 @@ FULLSCREEN    = True          # Set False for windowed testing on a desktop
 # --- Paths ---
 PHOTOS_DIR         = os.path.expanduser("~/photos")   # Put your photos here
 HISTORY_FILE       = os.path.expanduser("~/.photo_frame_history.json")
+CACHE_DIR          = os.path.expanduser("~/.photo_frame_cache")
+CACHE_QUALITY      = 85           # JPEG quality for cached thumbnails
 
 # --- Slideshow timing ---
 DISPLAY_SECS       = 15       # Seconds each slide is shown
@@ -35,7 +37,7 @@ SLIDE_DIRECTION    = "random" # "left" | "right" | "up" | "down" | "random"
 RELOAD_CHECK_SECS  = 30       # How often to check for new/removed photos
 
 # --- Display ---
-FPS                = 60
+FPS                = 30
 FONT_PATH          = None     # None = use pygame default; or path to a .ttf
 
 # ---------------------------------------------------------------------------

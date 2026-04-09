@@ -11,6 +11,7 @@ import time
 import threading
 from pathlib import Path
 
+import cache
 import config
 import scanner
 import scheduler as sched_mod
@@ -82,10 +83,19 @@ def main():
     schedule  = sched_mod.Scheduler(photos)
     renderer  = rend_mod.Renderer()
 
-    # Auto-reload callback
+    # Build thumbnail cache in background
+    if photos:
+        cache_builder = cache.CacheBuilder([p.path for p in photos])
+        cache_builder.start()
+
+    # Auto-reload callback (incremental — only processes new files)
     def reload_photos():
-        new_photos = scanner.scan()
+        new_photos = scanner.incremental_scan(schedule.photos)
         schedule.update_photos(new_photos)
+        # Cache any newly added photos in background
+        new_paths = [p.path for p in new_photos if cache.get_cached_path(p.path) is None]
+        if new_paths:
+            cache.CacheBuilder(new_paths).start()
 
     watcher = PhotoWatcher(callback=reload_photos)
     watcher.start()
