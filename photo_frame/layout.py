@@ -89,20 +89,27 @@ def render_slide(
     placements = compute_layout(slide)
 
     for placed in placements:
+        dest = placed.dest
         try:
             cached_path = cache.get_cached_path(placed.photo.path)
             if cached_path:
+                # Cached image is already screen-sized (cover+cropped) — just blit
                 img = pygame.image.load(cached_path).convert()
-            else:
-                pil_img = Image.open(placed.photo.path)
-                pil_img = ImageOps.exif_transpose(pil_img)
-                pil_img = pil_img.convert("RGB")
-                img = pygame.image.fromstring(pil_img.tobytes(), pil_img.size, "RGB")
+                crop_x = (config.SCREEN_WIDTH  - dest.width)  // 2
+                crop_y = (config.SCREEN_HEIGHT - dest.height) // 2
+                surface.blit(img, dest.topleft,
+                             pygame.Rect(crop_x, crop_y, dest.width, dest.height))
+                continue
+
+            # Cache miss fallback — load original via PIL
+            pil_img = Image.open(placed.photo.path)
+            pil_img = ImageOps.exif_transpose(pil_img)
+            pil_img = pil_img.convert("RGB")
+            img = pygame.image.fromstring(pil_img.tobytes(), pil_img.size, "RGB")
         except Exception as e:
             log.warning("Could not load image %s: %s", placed.photo.path, e)
             continue
 
-        dest  = placed.dest
         img_w, img_h = img.get_size()
 
         # Scale to cover the cell
@@ -114,11 +121,9 @@ def render_slide(
 
         scaled = pygame.transform.scale(img, (new_w, new_h))
 
-        # Crop to cell size from centre
         crop_x = (new_w - dest.width)  // 2
         crop_y = (new_h - dest.height) // 2
-        crop_rect = pygame.Rect(crop_x, crop_y, dest.width, dest.height)
-
-        surface.blit(scaled, dest.topleft, crop_rect)
+        surface.blit(scaled, dest.topleft,
+                     pygame.Rect(crop_x, crop_y, dest.width, dest.height))
 
     return surface

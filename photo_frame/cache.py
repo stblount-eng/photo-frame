@@ -8,6 +8,7 @@ import hashlib
 import logging
 import os
 import threading
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -45,16 +46,21 @@ def cache_photo(photo_path: str) -> Optional[str]:
         return cached
 
     try:
+        sw, sh = config.SCREEN_WIDTH, config.SCREEN_HEIGHT
         with Image.open(photo_path) as img:
             img = ImageOps.exif_transpose(img)
             img = img.convert("RGB")
-            img.thumbnail(
-                (config.SCREEN_WIDTH, config.SCREEN_HEIGHT),
-                Image.LANCZOS,
-            )
+            # Scale to COVER the screen (no black bars), then centre-crop to exact size
+            iw, ih = img.size
+            scale = max(sw / iw, sh / ih)
+            new_w, new_h = int(iw * scale), int(ih * scale)
+            img = img.resize((new_w, new_h), Image.LANCZOS)
+            left = (new_w - sw) // 2
+            top  = (new_h - sh) // 2
+            img = img.crop((left, top, left + sw, top + sh))
             os.makedirs(config.CACHE_DIR, exist_ok=True)
             img.save(cached, "JPEG", quality=config.CACHE_QUALITY)
-        log.debug("Cached: %s → %s", photo_path, cached)
+        log.info("Cached: %s", os.path.basename(photo_path))
         return cached
     except Exception as e:
         log.warning("Failed to cache %s: %s", photo_path, e)
@@ -64,17 +70,19 @@ def cache_photo(photo_path: str) -> Optional[str]:
 def build_cache(photo_paths: list[str]) -> None:
     """Process all photos, skipping already-cached ones."""
     total = len(photo_paths)
-    cached_count = 0
+    done = 0
     for i, path in enumerate(photo_paths):
         if get_cached_path(path):
-            cached_count += 1
+            done += 1
             continue
         cache_photo(path)
-        cached_count += 1
-        if (i + 1) % 10 == 0:
-            log.info("Cache progress: %d / %d", i + 1, total)
+        done += 1
+        # Yield CPU between photos so the display loop stays responsive
+        time.sleep(0.15)
+        if done % 10 == 0:
+            log.info("Cache progress: %d / %d", done, total)
 
-    log.info("Cache complete: %d photos ready", cached_count)
+    log.info("Cache complete: %d / %d photos", done, total)
 
 
 class CacheBuilder(threading.Thread):
